@@ -1054,6 +1054,10 @@ v_{j+1} ψ_{j} \\frac{𝖽x 𝖽y}{L_x L_y} , \\ j = 1, ..., n-1.
 ```
 """
 function fluxes(vars, params, grid, sol)
+  dev = grid.device
+  T = eltype(grid)
+  A = device_array(dev)
+
   nlayers = numberoflayers(params)
 
   lateralfluxes, verticalfluxes = zeros(nlayers), zeros(nlayers-1)
@@ -1066,7 +1070,12 @@ function fluxes(vars, params, grid, sol)
   @. ∂u∂yh = im * grid.l * vars.uh
   invtransform!(∂u∂y, ∂u∂yh, params)
 
-  lateralfluxes = (sum(@. params.H * params.U * vars.v * ∂u∂y; dims=(1, 2)))[1, 1, :]
+  # lateralfluxes = (sum(@. params.H * params.U * vars.v * ∂u∂y; dims=(1, 2)))[1, 1, :]
+  # lateralfluxes *= grid.dx * grid.dy / (grid.Lx * grid.Ly * sum(params.H))
+
+  for j = 1:nlayers
+    lateralfluxes[j] = (sum(@. params.H[j] * params.U[:,:,j] * vars.v[:,:,j] * ∂u∂y[:,:,j]; dims=(1, 2)))[1]
+  end
   lateralfluxes *= grid.dx * grid.dy / (grid.Lx * grid.Ly * sum(params.H))
 
   for j = 1:nlayers-1
@@ -1074,7 +1083,16 @@ function fluxes(vars, params, grid, sol)
     @views verticalfluxes[j] *= grid.dx * grid.dy / (grid.Lx * grid.Ly * sum(params.H))
   end
 
-  return lateralfluxes, verticalfluxes
+  ny, nx = grid.ny , grid.nx
+  nkr, nl = grid.nkr, grid.nl
+  kr, l  = grid.kr , grid.l
+  etah = rfft(A(params.eta))
+  etax = irfft(im * kr .* etah, nx)   # ∂η/∂x
+
+  topofluxes = sum(@. params.δ[3] * vars.ψ[:,:,end] * params.U[:,:,end] * etax)
+  topofluxes *= grid.dx * grid.dy / (grid.Lx * grid.Ly)
+
+  return lateralfluxes, verticalfluxes, topofluxes
 end
 
 function fluxes(vars, params::TwoLayerParams, grid, sol)
@@ -1167,9 +1185,28 @@ function spectralfluxes(vars, params, grid, sol)
   hhx = rfft(params.eta, 1)
   ψ₁hx, ψ₂hx, ψ₃hx = view(ψhx, :, :, 1), view(ψhx, :, :, 2), view(ψhx, :, :, 3)
 
+  # nonlinear terms
   q₁u₁hx = rfft(q₁ .* u₁, 1)
   q₂u₂hx = rfft(q₂ .* u₂, 1)
   q₃u₃hx = rfft(q₃ .* u₃, 1)
+
+  qvh = vars.uh           # use vars.uh as scratch variable
+
+  ∂qv∂yh = vars.uh           # use vars.uh as scratch variable
+
+  ∂qv∂y = vars.u           # use vars.u as scratch variable
+
+  qv = vars.q .* vars.v
+
+  fwdtransform!(qvh,qv,params)
+
+  @. ∂qv∂yh = -im * grid.l * qvh
+
+  invtransform!(∂qv∂y,∂qv∂yh,params)
+
+  ∂qv∂yhx = rfft(∂qv∂y, 1)
+
+  ∂q₁v₁∂yhx, ∂q₂v₂∂yhx, ∂q₃v₃∂yhx = view(∂qv∂yhx, :, :, 1), view(∂qv∂yhx, :, :, 2), view(∂qv∂yhx, :, :, 3)
 
   # Lateral (barotropic) energy fluxes
   auxCMh = @. im * grid.kr * params.U * (ψhx*conj(∂u∂yhx) - conj(ψhx)*∂u∂yhx)
@@ -1184,13 +1221,13 @@ function spectralfluxes(vars, params, grid, sol)
 
   # Nonlinear triad terms
   auxCNh = auxCMh[:,:,:]    # scratch variable
-  auxCNh[:,:,1] = @. im * grid.kr * (ψ₁hx * conj(q₁u₁hx) - conj(ψ₁hx) * q₁u₁hx)
-  auxCNh[:,:,2] = @. im * grid.kr * (ψ₂hx * conj(q₂u₂hx) - conj(ψ₂hx) * q₂u₂hx)
-  auxCNh[:,:,3] = @. im * grid.kr * (ψ₃hx * conj(q₃u₃hx) - conj(ψ₃hx) * q₃u₃hx)
+  auxCNh[:,:,1] = @. im * grid.kr * (ψ₁hx * conj(q₁u₁hx) - conj(ψ₁hx) * q₁u₁hx) + conj(ψ₁hx) * ∂q₁v₁∂yhx + ψ₁hx * conj(∂q₁v₁∂yhx) 
+  auxCNh[:,:,2] = @. im * grid.kr * (ψ₂hx * conj(q₂u₂hx) - conj(ψ₂hx) * q₂u₂hx) + conj(ψ₂hx) * ∂q₂v₂∂yhx + ψ₂hx * conj(∂q₂v₂∂yhx)
+  auxCNh[:,:,3] = @. im * grid.kr * (ψ₃hx * conj(q₃u₃hx) - conj(ψ₃hx) * q₃u₃hx) + conj(ψ₃hx) * ∂q₃v₃∂yhx + ψ₃hx * conj(∂q₃v₃∂yhx)
 
   # Topographic energy flux in the lower layer (already on the RHS)
   # the prefactor f0/H is already accounted for in definition of eta
-  auxCtopoh = @. (conj(u₃hx)*v₃hhx + u₃hx*conj(v₃hhx) + im * grid.kr * (conj(ψ₃hx)*u₃hhx - ψ₃hx*conj(u₃hhx) + U₃ * (conj(ψ₃hx)*hhx + ψ₃hx*conj(hhx))))  
+  auxCtopoh = @. (conj(u₃hx)*v₃hhx + u₃hx*conj(v₃hhx) + im * grid.kr * (conj(ψ₃hx)*u₃hhx - ψ₃hx*conj(u₃hhx) + U₃ * (conj(ψ₃hx)*hhx - ψ₃hx*conj(hhx))))  
   # auxCtopoh = (params.f₀/params.H[end]) * auxCtopoh
 
   # integrating in y
@@ -1207,27 +1244,5 @@ function spectralfluxes(vars, params, grid, sol)
 end
 
 spectralfluxes(prob) = spectralfluxes(prob.vars, prob.params, prob.grid, prob.sol)
-
-
-# """
-#     calc_growth(t, E_in)
-# Estimate the growth rate of instabilities from a least-squares fit to energy
-# histories, where E_in = [KE1 KE2 KE3 PE32 PE52]
-# """
-# function calc_growth(t, E_in)
-#   E_tot = sum(E_in,dims=2)
-#   min_ind,trash = Peaks.findminima(diff(E_tot[:],dims=1))
-#   f = min_ind[end] + 1 # get first time index from the last renormalization cycle
-#   t, KE1_new = t[f:end], E_in[f:end,1]           # construct time series from last section of growth in upper layer
-#   n = size(t)[1]
-#   d = Matrix(reshape(log.(KE1_new), (1, n)))
-#   gm = Matrix(reshape(t, (1, n)))
-#   Gm = Matrix([ones(n, 1) gm'])
-#   GmT = Gm'
-#   mv = inv(GmT*Gm)*(GmT*d')
-#   sigma = mv[2]
-
-#   return sigma
-# end
 
 end # module
