@@ -991,7 +991,25 @@ function energies(vars, params, grid, sol)
     view(PE, j) .= 1 / (2 * V) * params.f₀^2 ./ params.g′[j] .* parsevalsum(abs2.(view(vars.ψh, :, :, j) .- view(vars.ψh, :, :, j+1)), grid)
   end
 
-  return KE, PE
+  # bottom Ekman drag
+  energy_dragh = vars.uh[:,:,3] # use vars.uh as scratch variable
+
+  @. energy_dragh = params.μ * grid.invKrsq * abs2(sol[:,:,3])
+  CUDA.@allowscalar energy_dragh[1, 1] = 0
+  ED = 1 / (grid.Lx * grid.Ly) * parsevalsum(energy_dragh, grid)
+
+  # biharmonic dissipation
+  BD = zeros(nlayers)
+  for j=1:nlayers
+    energy_dissipationh = vars.uh[:,:,j] # use vars.uh as scratch variable
+    @. energy_dissipationh = params.ν * grid.Krsq^(params.nν-1) * abs2(sol[:,:,j])
+    CUDA.@allowscalar energy_dissipationh[1, 1] = 0
+    BD[j] = 1 / (grid.Lx * grid.Ly) * parsevalsum(energy_dissipationh, grid)
+  end
+
+  diss = [ED, BD]
+
+  return KE, PE, diss
 end
 
 function energies(vars, params::TwoLayerParams, grid, sol)
