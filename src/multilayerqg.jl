@@ -729,7 +729,9 @@ function calcN!(N, sol, t, clock, vars, params, grid)
 
   calcN_advection!(N, sol, vars, params, grid)
 
-  @views @. N[:, :, nlayers] +=  apply_drag(params, grid, vars) # params.μ * grid.Krsq * vars.ψh[:, :, nlayers]   # bottom linear drag
+  drag = apply_drag(params, grid, vars)
+
+  @views @. N[:, :, nlayers] += drag # params.μ * grid.Krsq * vars.ψh[:, :, nlayers]   # bottom linear drag
 
   addforcing!(N, sol, t, clock, vars, params, grid)
 
@@ -742,7 +744,6 @@ function apply_drag(params, grid, vars)
     term1 = @. sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
     term2 = @. - sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
 
-    etah = rfft(A(eta))
     dterm1dx = irfft(im * kr .* rfft(term1), grid.nx)   # ∂η/∂x
     dterm2dy = irfft(im * l  .* rfft(term2), grid.ny)   # ∂η/∂y
 
