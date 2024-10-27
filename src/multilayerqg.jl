@@ -184,7 +184,7 @@ struct Params{T, Aphys3D, Aphys2D, Atrans4D, Trfft} <: AbstractParams
         nν :: Int
     "function that calculates the Fourier transform of the forcing, ``F̂``"
    calcFq! :: Function
-
+    "if true use quadratic bottom drag, else use linear bottom drag"
    drag_bool :: T
 
   # derived params
@@ -322,7 +322,7 @@ function convert_U_to_U3D(dev, nlayers, grid, U::Number)
   return A(U_3D)
 end
 
-function Params(nlayers::Int, g, f₀, β, ρ, H, U, eta, topographic_pv_gradient, μ, ν, nν, grid::TwoDGrid; calcFq=nothingfunction, effort=FFTW.MEASURE)
+function Params(nlayers::Int, g, f₀, β, ρ, H, U, eta, topographic_pv_gradient, μ, ν, nν, grid::TwoDGrid; calcFq=nothingfunction, effort=FFTW.MEASURE, drag_bool=false)
   dev = grid.device
   T = eltype(grid)
   A = device_array(dev)
