@@ -729,7 +729,7 @@ function calcN!(N, sol, t, clock, vars, params, grid)
 
   calcN_advection!(N, sol, vars, params, grid)
 
-  drag = apply_drag(params, grid, vars)
+  drag = apply_drag(params, grid, vars, nlayers)
 
   @views @. N[:, :, nlayers] += drag # params.μ * grid.Krsq * vars.ψh[:, :, nlayers]   # bottom linear drag
 
@@ -739,7 +739,7 @@ function calcN!(N, sol, t, clock, vars, params, grid)
 end
 
 
-function apply_drag(params, grid, vars)
+function apply_drag(params, grid, vars, nlayers)
   if params.drag_bool == 1 # apply quadratic bottom drag
     term1 = @. sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
     term2 = @. - sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
