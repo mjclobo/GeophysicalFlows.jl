@@ -140,7 +140,7 @@ function Problem(nlayers::Int,                             # number of fluid lay
 
   grid = TwoDGrid(dev; nx, Lx, ny, Ly, aliased_fraction, T)
 
-  params = Params(nlayers, g, f₀, β, ρ, H, U, eta, topographic_pv_gradient, μ, ν, nν, grid; calcFq)
+  params = Params(nlayers, g, f₀, β, ρ, H, U, eta, topographic_pv_gradient, μ, ν, nν, grid; calcFq, drag_bool)
 
   vars = calcFq == nothingfunction ? DecayingVars(grid, params) : (stochastic ? StochasticForcedVars(grid, params) : ForcedVars(grid, params))
 
