@@ -740,12 +740,12 @@ end
 
 
 function apply_drag(params, grid, vars)
-  if params.drag_bool # apply quadratic bottom drag
+  if params.drag_bool == 1 # apply quadratic bottom drag
     term1 = @. sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
     term2 = @. - sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
 
-    dterm1dx = irfft(im * kr .* rfft(term1), grid.nx)   # ∂η/∂x
-    dterm2dy = irfft(im * l  .* rfft(term2), grid.ny)   # ∂η/∂y
+    dterm1dx = irfft(im * grid.kr .* rfft(term1), grid.nx)   # ∂η/∂x
+    dterm2dy = irfft(im * grid.l  .* rfft(term2), grid.ny)   # ∂η/∂y
 
     d_out = @. params.μ * (dterm1dx + dterm2dy)
   else # apply linear bottom drag
