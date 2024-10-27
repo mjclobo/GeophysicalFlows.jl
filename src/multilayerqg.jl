@@ -51,7 +51,8 @@ nothingfunction(args...) = nothing
                  stochastic = false,
                      linear = false,
            aliased_fraction = 1/3,
-                          T = Float64)
+                          T = Float64,
+                  drag_bool = false)
 
 Construct a multi-layer quasi-geostrophic problem with `nlayers` fluid layers on device `dev`.
 
@@ -113,7 +114,8 @@ function Problem(nlayers::Int,                             # number of fluid lay
                        linear = false,
               # Float type and dealiasing
              aliased_fraction = 1/3,
-                            T = Float64)
+                            T = Float64,
+                    drag_bool = false)
 
   if dev == GPU() && nlayers > 2
     @warn """MultiLayerQG module is not optimized on the GPU yet for configurations with
@@ -182,6 +184,8 @@ struct Params{T, Aphys3D, Aphys2D, Atrans4D, Trfft} <: AbstractParams
         nν :: Int
     "function that calculates the Fourier transform of the forcing, ``F̂``"
    calcFq! :: Function
+
+   drag_bool :: T
 
   # derived params
     "array with the reduced gravity constants for each fluid interface"
@@ -270,6 +274,8 @@ struct TwoLayerParams{T, Aphys3D, Aphys2D, Trfft} <: AbstractParams
         nν :: Int
     "function that calculates the Fourier transform of the forcing, ``F̂``"
    calcFq! :: Function
+"drag boolean: 0 for linear, 1 for quadratic"
+   drag_bool :: T
 
   # derived params
     "the reduced gravity constants for the fluid interface"
@@ -382,7 +388,7 @@ function Params(nlayers::Int, g, f₀, β, ρ, H, U, eta, topographic_pv_gradien
     CUDA.@allowscalar @views Qy[:, :, nlayers] = @. Qy[:, :, nlayers] - Fm[nlayers-1] * (U[:, :, nlayers-1] - U[:, :, nlayers])
 
     if nlayers==2
-      return TwoLayerParams(T(g), T(f₀), T(β), Tuple(T.(ρ)), Tuple(T.(H)), U, eta, topographic_pv_gradient, T(μ), T(ν), nν, calcFq, T(g′[1]), Qx, Qy, rfftplanlayered)
+      return TwoLayerParams(T(g), T(f₀), T(β), Tuple(T.(ρ)), Tuple(T.(H)), U, eta, topographic_pv_gradient, T(μ), T(ν), nν, calcFq, T(drag_bool), T(g′[1]), Qx, Qy, rfftplanlayered)
     else # if nlayers>2
       return Params(nlayers, T(g), T(f₀), T(β), Tuple(T.(ρ)), T.(H), U, eta, topographic_pv_gradient, T(μ), T(ν), nν, calcFq, Tuple(T.(g′)), Tuple(T.(F)), Tuple(T.(δ)), Qx, Qy, S, S⁻¹, rfftplanlayered)
     end
@@ -730,6 +736,18 @@ function calcN!(N, sol, t, clock, vars, params, grid)
   return nothing
 end
 
+
+function apply_drag(params, grid, vars)
+  if params.drag_bool # apply quadratic bottom drag
+    d_out = @. params.μ * sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * grid.Krsq * vars.ψh[:, :, nlayers]
+  else # apply linear bottom drag
+    d_out = @. params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
+  end
+
+  return d_out
+end
+
+
 """
     calcNlinear!(N, sol, t, clock, vars, params, grid)
 
@@ -794,7 +812,7 @@ function calcN_advection!(N, sol, vars, params, grid)
   fwdtransform!(vqh, vq, params)
 
   @. N -= im * grid.kr * uqh + im * grid.l * vqh    # -\hat{∂[(U+u)q]/∂x} - \hat{∂[vq]/∂y}
-
+  
   return nothing
 end
 
@@ -994,7 +1012,7 @@ function energies(vars, params, grid, sol)
   # bottom Ekman drag
   energy_dragh = vars.uh[:,:,3] # use vars.uh as scratch variable
 
-  @. energy_dragh = params.μ * grid.invKrsq * abs2(sol[:,:,3])
+  @. energy_dragh = params.μ * grid.invKrsq * abs2(vars.ψh[:,:,nlayers])
   CUDA.@allowscalar energy_dragh[1, 1] = 0
   ED = 1 / (grid.Lx * grid.Ly) * parsevalsum(energy_dragh, grid)
 
