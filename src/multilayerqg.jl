@@ -744,10 +744,10 @@ function apply_drag(params, grid, vars, nlayers)
     term1 = @. sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
     term2 = @. - sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
 
-    dterm1dx = irfft(im * grid.kr .* rfft(term1), grid.nx)   # ∂η/∂x
-    dterm2dy = irfft(im * grid.l  .* rfft(term2), grid.ny)   # ∂η/∂y
+    dterm1dxh = im * grid.kr .* rfft(term1)
+    dterm2dyh = im * grid.l  .* rfft(term2)
 
-    d_out = @. params.μ * (dterm1dx + dterm2dy)
+    d_out = @. params.μ * (dterm1dxh + dterm2dyh)
   else # apply linear bottom drag
     d_out = @. params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
   end
