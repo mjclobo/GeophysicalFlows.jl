@@ -729,7 +729,7 @@ function calcN!(N, sol, t, clock, vars, params, grid)
 
   calcN_advection!(N, sol, vars, params, grid)
 
-  @views @. N[:, :, nlayers] += params.μ * grid.Krsq * vars.ψh[:, :, nlayers]   # bottom linear drag
+  @views @. N[:, :, nlayers] +=  apply_drag(params, grid, vars) # params.μ * grid.Krsq * vars.ψh[:, :, nlayers]   # bottom linear drag
 
   addforcing!(N, sol, t, clock, vars, params, grid)
 
@@ -739,7 +739,14 @@ end
 
 function apply_drag(params, grid, vars)
   if params.drag_bool # apply quadratic bottom drag
-    d_out = @. params.μ * sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * grid.Krsq * vars.ψh[:, :, nlayers]
+    term1 = @. sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
+    term2 = @. - sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
+
+    etah = rfft(A(eta))
+    dterm1dx = irfft(im * kr .* rfft(term1), grid.nx)   # ∂η/∂x
+    dterm2dy = irfft(im * l  .* rfft(term2), grid.ny)   # ∂η/∂y
+
+    d_out = @. params.μ * (dterm1dx + dterm2dy)
   else # apply linear bottom drag
     d_out = @. params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
   end
