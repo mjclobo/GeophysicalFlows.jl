@@ -747,7 +747,8 @@ function apply_drag(params, grid, vars, nlayers)
     dterm1dxh = im * grid.kr .* rfft(term1)
     dterm2dyh = im * grid.l  .* rfft(term2)
 
-    d_out = @. params.μ * (dterm1dxh + dterm2dyh)
+    d_out = @. - params.μ * (dterm1dxh + dterm2dyh)
+
   else # apply linear bottom drag
     d_out = @. params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
   end
