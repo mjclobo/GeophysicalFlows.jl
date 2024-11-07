@@ -751,18 +751,18 @@ function apply_drag(params, grid, vars, nlayers)
     # invtransform!(u, deepcopy(uh), params)
     # invtransform!(v, deepcopy(vh), params)
 
-    # term1 = @.  sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
-    # term2 = @. -sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
+    term1 = @.  sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
+    term2 = @. -sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
 
-    # change this to bottom layer only
-    term1 = @.  sqrt(vars.u^2 + vars.v^2) * vars.v
-    term2 = @. -sqrt(vars.u^2 + vars.v^2) * vars.u
+    # # change this to bottom layer only
+    # term1 = @.  sqrt(vars.u^2 + vars.v^2) * vars.v
+    # term2 = @. -sqrt(vars.u^2 + vars.v^2) * vars.u
 
-    dterm1dxh = deepcopy(vars.uh) # im * grid.kr .* rfft(term1)
-    dterm2dyh = deepcopy(vars.vh) # im * grid.l  .* rfft(term2)
+    dterm1dxh = deepcopy(vars.uh[:,:,nlayers]) # im * grid.kr .* rfft(term1)
+    dterm2dyh = deepcopy(vars.vh[:,:,nlayers]) # im * grid.l  .* rfft(term2)
 
-    fwdtransform!(dterm1dxh, term1[:,:,nlayers], params)
-    fwdtransform!(dterm2dyh, term2[:,:,nlayers], params)
+    fwdtransform!(dterm1dxh, term1, params)
+    fwdtransform!(dterm2dyh, term2, params)
 
     d_out = @. - params.μ * (im * grid.kr * dterm1dxh + im * grid.l * dterm2dyh)
 
