@@ -751,20 +751,20 @@ function apply_drag(params, grid, vars, nlayers)
     invtransform!(u, deepcopy(uh), params)
     invtransform!(v, deepcopy(vh), params)
 
-    term1 = @.  sqrt(vars.u^2 + vars.v^2) * vars.v
-    term2 = @. -sqrt(vars.u^2 + vars.v^2) * vars.u
+    term1 = @.  sqrt(u[:,:,nlayers]^2 + v[:,:,nlayers]^2) * v[:,:,nlayers]
+    term2 = @. -sqrt(u[:,:,nlayers]^2 + v[:,:,nlayers]^2) * u[:,:,nlayers]
     
     # # change this to bottom layer only
     # term1 = @.  sqrt(vars.u^2 + vars.v^2) * vars.v
     # term2 = @. -sqrt(vars.u^2 + vars.v^2) * vars.u
     
-    dterm1dxh = deepcopy(vars.uh) # im * grid.kr .* rfft(term1)
-    dterm2dyh = deepcopy(vars.vh) # im * grid.l  .* rfft(term2)
+    dterm1dxh = im * grid.kr .* rfft(term1) # deepcopy(vars.uh) # 
+    dterm2dyh = im * grid.l  .* rfft(term2) # deepcopy(vars.vh) # 
     
-    fwdtransform!(dterm1dxh, term1, params)
-    fwdtransform!(dterm2dyh, term2, params)
+    # fwdtransform!(dterm1dxh, term1, params)
+    # fwdtransform!(dterm2dyh, term2, params)
     
-    d_out = @. - params.μ * (im * grid.kr * dterm1dxh[:,:,nlayers] + im * grid.l * dterm2dyh[:,:,nlayers])
+    d_out = @. - params.μ * (im * grid.kr * dterm1dxh + im * grid.l * dterm2dyh)
 
   else # apply linear bottom drag
     d_out = @. params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
