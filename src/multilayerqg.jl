@@ -755,8 +755,8 @@ function apply_drag(params, grid, vars, nlayers)
     # term2 = @. -sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
     
     # change this to bottom layer only
-    term1 = @.  sqrt(u[:,:,nlayers]^2 + v[:,:,nlayers]^2) * v[:,:,nlayers]
-    term2 = @. -sqrt(u[:,:,nlayers]^2 + v[:,:,nlayers]^2) * u[:,:,nlayers]
+    term1 = @.  sqrt(u^2 + v^2) * v
+    term2 = @. -sqrt(u^2 + v^2) * u
     
     dterm1dxh = deepcopy(vars.uh) # im * grid.kr .* rfft(term1) # 
     dterm2dyh = deepcopy(vars.vh) # im * grid.l  .* rfft(term2) # 
@@ -764,7 +764,7 @@ function apply_drag(params, grid, vars, nlayers)
     fwdtransform!(dterm1dxh, term1, params)
     fwdtransform!(dterm2dyh, term2, params)
     
-    d_out = @. - params.μ * (im * grid.kr * dterm1dxh + im * grid.l * dterm2dyh)
+    d_out = @. - params.μ * (im * grid.kr * dterm1dxh[:,:,nlayers] + im * grid.l * dterm2dyh[:,:,nlayers])
 
     # d_out = @. - params.μ * (dterm1dxh + dterm2dyh)
 
