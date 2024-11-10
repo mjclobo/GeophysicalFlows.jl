@@ -832,7 +832,7 @@ function calcN_advection!(N, sol, vars, params, grid)
 
   invtransform!(vars.q, vars.qh, params)
 
-  uq , vq  = vars.u , vars.v               # use vars.u and vars.v as scratch variables
+  uq , vq  = deepcopy(vars.u) , deepcopy(vars.v)               # use vars.u and vars.v as scratch variables
   uqh, vqh = vars.uh, vars.vh              # use vars.uh and vars.vh as scratch variables
   @. uq *= vars.q                          # (U+u)*q
   @. vq *= vars.q                          # v*q
