@@ -742,17 +742,17 @@ end
 function apply_drag(params, grid, vars, nlayers)
   if params.drag_bool == 1 # apply quadratic bottom drag
 
-    uh = -im * grid.l  .* vars.ψh
-    vh =  im * grid.kr .* vars.ψh
+    # uh = -im * grid.l  .* vars.ψh
+    # vh =  im * grid.kr .* vars.ψh
   
-    u = deepcopy(vars.u)   # scratch variable
-    v = deepcopy(vars.v)   # scratch variable
+    # u = deepcopy(vars.u)   # scratch variable
+    # v = deepcopy(vars.v)   # scratch variable
 
-    invtransform!(u, deepcopy(uh), params)
-    invtransform!(v, deepcopy(vh), params)
+    # invtransform!(u, deepcopy(uh), params)
+    # invtransform!(v, deepcopy(vh), params)
 
-    term1 = @.  sqrt(u[:,:,nlayers]^2 + v[:,:,nlayers]^2) * v[:,:,nlayers]
-    term2 = @. -sqrt(u[:,:,nlayers]^2 + v[:,:,nlayers]^2) * u[:,:,nlayers]
+    term1 = @.  sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.v[:,:,nlayers]
+    term2 = @. -sqrt(vars.u[:,:,nlayers]^2 + vars.v[:,:,nlayers]^2) * vars.u[:,:,nlayers]
     
     # # change this to bottom layer only
     # term1 = @.  sqrt(vars.u^2 + vars.v^2) * vars.v
