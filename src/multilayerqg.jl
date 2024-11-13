@@ -146,7 +146,7 @@ function Problem(nlayers::Int,                             # number of fluid lay
 
   equation = linear ? LinearEquation(params, grid) : Equation(params, grid)
 
-  FourierFlows.Problem(equation, stepper, dt, grid, vars, params)
+  FourierFlows.Problem(equation, stepper, dt, grid, vars, params; order=filt_order)
 end
 
 """
@@ -1045,7 +1045,7 @@ function energies(vars, params, grid, sol)
   CUDA.@allowscalar energy_dragh[1, 1] = 0
   ED = 1 / (grid.Lx * grid.Ly) * parsevalsum(energy_dragh, grid)
 
-  # biharmonic dissipation
+  # hyperviscous dissipation
   BD = zeros(nlayers)
   for j=1:nlayers
     energy_dissipationh = vars.uh[:,:,j] # use vars.uh as scratch variable
