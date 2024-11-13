@@ -148,7 +148,11 @@ function Problem(nlayers::Int,                             # number of fluid lay
 
   equation = linear ? LinearEquation(params, grid) : Equation(params, grid)
 
-  FourierFlows.Problem(equation, stepper, dt, grid, vars, params; order=filt_order, innerK=innerK)
+  if stepper[1:4]=="Filt"
+    FourierFlows.Problem(equation, stepper, dt, grid, vars, params; order=filt_order, innerK=innerK)
+  else
+    FourierFlows.Problem(equation, stepper, dt, grid, vars, params)
+  end
 end
 
 """
