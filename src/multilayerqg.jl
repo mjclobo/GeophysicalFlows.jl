@@ -115,7 +115,8 @@ function Problem(nlayers::Int,                             # number of fluid lay
               # Float type and dealiasing
              aliased_fraction = 1/3,
                             T = Float64,
-                    drag_bool = false)
+                    drag_bool = false,
+                   filt_order = 4)
 
   if dev == GPU() && nlayers > 2
     @warn """MultiLayerQG module is not optimized on the GPU yet for configurations with
