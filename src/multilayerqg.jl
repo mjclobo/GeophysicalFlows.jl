@@ -116,7 +116,8 @@ function Problem(nlayers::Int,                             # number of fluid lay
              aliased_fraction = 1/3,
                             T = Float64,
                     drag_bool = false,
-                   filt_order = 4)
+                   filt_order = 4,
+                       innerK = 2/3)
 
   if dev == GPU() && nlayers > 2
     @warn """MultiLayerQG module is not optimized on the GPU yet for configurations with
@@ -147,7 +148,7 @@ function Problem(nlayers::Int,                             # number of fluid lay
 
   equation = linear ? LinearEquation(params, grid) : Equation(params, grid)
 
-  FourierFlows.Problem(equation, stepper, dt, grid, vars, params; order=filt_order)
+  FourierFlows.Problem(equation, stepper, dt, grid, vars, params; order=filt_order, innerK=innerK)
 end
 
 """
