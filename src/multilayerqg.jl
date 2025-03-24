@@ -43,6 +43,7 @@ nothingfunction(args...) = nothing
                         eta = nothing,
     topographic_pv_gradient = (0, 0),
                           μ = 0,
+                          κ = 0.,
                           ν = 0,
                          nν = 1,
                          dt = 0.01,
@@ -74,6 +75,7 @@ Keyword arguments
   - `eta`: Periodic component of the topographic potential vorticity.
   - `topographic_pv_gradient`: The ``(x, y)`` components of the topographic PV large-scale gradient.
   - `μ`: Linear bottom drag coefficient.
+  - `κ`: Quadratic bottom drag coefficient.
   - `ν`: Small-scale (hyper)-viscosity coefficient.
   - `nν`: (Hyper)-viscosity order, `nν```≥ 1``.
   - `dt`: Time-step.
@@ -292,7 +294,7 @@ function Params(nlayers::Int, f₀, β, b, H, U, eta, topographic_pv_gradient, �
   rfftplanlayered = plan_flows_rfft(A{T, 3}(undef, grid.nx, grid.ny, nlayers), [1, 2]; flags=effort)
 
   if nlayers==1
-    return SingleLayerParams(T(β), U, eta, topographic_pv_gradient, T(μ), T(ν), nν, calcFq, Qx, Qy, rfftplanlayered)
+    return SingleLayerParams(T(β), U, eta, topographic_pv_gradient, T(μ), T(κ), T(ν), nν, calcFq, Qx, Qy, rfftplanlayered)
 
   else # if nlayers≥2
 
