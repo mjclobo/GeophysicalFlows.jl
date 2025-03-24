@@ -101,6 +101,7 @@ function Problem(nlayers::Int,                                     # number of f
       topographic_pv_gradient = (0, 0),                            # tuple with the ``(x, y)`` components of topographic PV large-scale gradient
               # Bottom Drag and/or (hyper)-viscosity
                             μ = 0,
+                            κ = 0.,
                             ν = 0,
                            nν = 1,
               # Timestepper and equation options
@@ -161,6 +162,8 @@ struct Params{T, Aphys3D, Aphys2D, Atrans4D, Trfft} <: AbstractParams
     topographic_pv_gradient :: Tuple{T, T}
     "linear bottom drag coefficient"
          μ :: T
+    "quadratic bottom drag coefficient"
+         κ :: T
     "small-scale (hyper)-viscosity coefficient"
          ν :: T
     "(hyper)-viscosity order, `nν```≥ 1``"
@@ -202,6 +205,8 @@ struct SingleLayerParams{T, Aphys3D, Aphys2D, Trfft} <: AbstractParams
     topographic_pv_gradient :: Tuple{T, T}
     "linear drag coefficient"
          μ :: T
+    "quadratic bottom drag coefficient"
+         κ :: T
     "small-scale (hyper)-viscosity coefficient"
          ν :: T
     "(hyper)-viscosity order, `nν```≥ 1``"
@@ -655,7 +660,25 @@ function calcN!(N, sol, t, clock, vars, params, grid)
 
   calcN_advection!(N, sol, vars, params, grid)
 
-  @views @. N[:, :, nlayers] += params.μ * grid.Krsq * vars.ψh[:, :, nlayers]   # bottom linear drag
+  if params.κ != 0.
+    # calculating quadratic plus linear drag
+    term1 = @.  sqrt(vars.u^2 + vars.v^2) * vars.v
+    term2 = @. -sqrt(vars.u^2 + vars.v^2) * vars.u
+
+    dterm1dxh = deepcopy(vars.uh) #
+    dterm2dyh = deepcopy(vars.vh) # 
+
+    fwdtransform!(dterm1dxh, term1, params)
+    fwdtransform!(dterm2dyh, term2, params)
+
+    drag_term = @. - params.κ * (im * grid.kr * dterm1dxh[:,:,nlayers] + im * grid.l * dterm2dyh[:,:,nlayers])
+
+    @. drag_term += params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
+  else
+    drag_term = @. params.μ * grid.Krsq * vars.ψh[:, :, nlayers]
+  end
+
+  @views @. N[:, :, nlayers] += drag_term   # bottom linear plus quadratic drag
 
   addforcing!(N, sol, t, clock, vars, params, grid)
 
@@ -717,7 +740,7 @@ function calcN_advection!(N, sol, vars, params, grid)
 
   invtransform!(vars.q, vars.qh, params)
 
-  uq , vq  = vars.u , vars.v               # use vars.u and vars.v as scratch variables
+  uq , vq  = deepcopy(vars.u) , deepcopy(vars.v)               # use vars.u and vars.v as scratch variables
   uqh, vqh = vars.uh, vars.vh              # use vars.uh and vars.vh as scratch variables
   @. uq *= vars.q                          # (U+u)*q
   @. vq *= vars.q                          # v*q
