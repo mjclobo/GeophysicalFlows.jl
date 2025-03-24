@@ -257,7 +257,7 @@ function convert_U_to_U3D(dev, nlayers, grid, U::Number)
   return A(U_3D)
 end
 
-function Params(nlayers::Int, f₀, β, b, H, U, eta, topographic_pv_gradient, μ, ν, nν, grid::TwoDGrid;
+function Params(nlayers::Int, f₀, β, b, H, U, eta, topographic_pv_gradient, μ, κ, ν, nν, grid::TwoDGrid;
                 calcFq=nothingfunction, effort=FFTW.MEASURE)
   dev = grid.device
   T = eltype(grid)
