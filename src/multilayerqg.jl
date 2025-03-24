@@ -320,7 +320,7 @@ function Params(nlayers::Int, f₀, β, b, H, U, eta, topographic_pv_gradient, �
     end
     @views Qy[:, :, nlayers] = @. Qy[:, :, nlayers] - Fm[nlayers-1] * (U[:, :, nlayers-1] - U[:, :, nlayers])
 
-    return Params(nlayers, T(f₀), T(β), Tuple(T.(b)), T.(H), U, eta, topographic_pv_gradient, T(μ), T(ν), nν, calcFq, Tuple(T.(g′)), Qx, Qy, S, S⁻¹, rfftplanlayered)
+    return Params(nlayers, T(f₀), T(β), Tuple(T.(b)), T.(H), U, eta, topographic_pv_gradient, T(μ), T(κ), T(ν), nν, calcFq, Tuple(T.(g′)), Qx, Qy, S, S⁻¹, rfftplanlayered)
   end
 end
 
